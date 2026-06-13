@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIP Direct Connect - Secure Pairing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        
+        body { background: #020617; color: #ffffff; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        
+        /* High Contrast UI */
+        .glass-card { 
+            background: rgba(255, 255, 255, 0.05); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        .btn-emerald { background: #10b981; box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
+        .btn-pink { background: #ec4899; box-shadow: 0 0 20px rgba(236, 72, 153, 0.4); }
+
+        /* Animations */
+        @keyframes pulse-call { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+        .animate-call { animation: pulse-call 1.5s infinite; }
+        
+        .activity-toast { animation: slideUp 0.5s ease-out forwards; }
+        @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* Ghost Chat Blur */
+        .blur-msg { filter: blur(4px); user-select: none; }
+    </style>
+</head>
+<body class="pb-32 bg-slate-950">
+
+    <!-- Sound Engines -->
+    <audio id="ringSnd" loop><source src="https://assets.mixkit.co/active_storage/sfx/1353/1353-preview.mp3" type="audio/mpeg"></audio>
+    <audio id="notifSnd"><source src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" type="audio/mpeg"></audio>
+
+    <!-- TOP HEADER -->
+    <header class="p-5 flex justify-between items-center border-b border-white/10 sticky top-0 bg-slate-950/90 backdrop-blur-md z-50">
+        <div class="text-2xl font-black italic text-emerald-500">Live<span class="text-white">Connect</span></div>
+        <div class="flex items-center gap-3">
+            <button onclick="requestPush()" class="text-[10px] font-black bg-emerald-500/10 text-emerald-400 px-4 py-2 rounded-full border border-emerald-500/20 uppercase tracking-widest"><i class="fas fa-bell animate-swing"></i> Enable Alerts</button>
+        </div>
+    </header>
+
+    <!-- LIVE ACTIVITY FEED (Social Proof) -->
+    <div id="activityContainer" class="fixed bottom-28 left-4 right-4 z-40 pointer-events-none flex flex-col gap-2"></div>
+
+    <!-- MAIN PROFILE GRID (36 PROFILES) -->
+    <main class="p-4 grid grid-cols-2 md:grid-cols-3 gap-4 max-w-5xl mx-auto" id="profileGrid"></main>
+
+    <!-- CALL SCREEN (The Bait) -->
+    <div id="callOverlay" class="fixed inset-0 z-[1000] hidden bg-slate-900 flex flex-col items-center justify-center text-center p-8">
+        <div class="absolute inset-0 opacity-30 bg-cover bg-center" id="callBlurBg"></div>
+        <div class="relative z-10">
+            <div class="relative w-40 h-40 mb-8 mx-auto">
+                <img id="callImg" src="" class="w-full h-full rounded-full object-cover border-4 border-emerald-500 shadow-2xl">
+                <div class="absolute inset-0 border-4 border-emerald-500 rounded-full animate-ping"></div>
+            </div>
+            <h2 id="callName" class="text-4xl font-black mb-2">Sophia</h2>
+            <p id="callType" class="text-emerald-400 font-black text-sm uppercase tracking-[0.4em] mb-20 animate-pulse">Incoming Video Call</p>
+            
+            <div class="flex gap-12 justify-center">
+                <button onclick="closeCall()" class="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center text-2xl shadow-xl"><i class="fas fa-phone-slash"></i></button>
+                <button onclick="showPairing()" class="w-24 h-24 btn-emerald rounded-full flex items-center justify-center text-4xl animate-call shadow-xl"><i class="fas fa-video"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAIRING GATEWAY (Brainwash Unit) -->
+    <div id="pairingOverlay" class="fixed inset-0 z-[2000] hidden bg-slate-950/98 backdrop-blur-3xl flex items-center justify-center p-6 text-center">
+        <div class="glass-card p-8 rounded-[40px] w-full max-w-md border-emerald-500/30">
+            <div class="w-20 h-20 bg-emerald-500/10 rounded-full mx-auto mb-6 flex items-center justify-center border border-emerald-500/20">
+                <i class="fas fa-shield-check text-4xl text-emerald-500"></i>
+            </div>
+            <h2 class="text-2xl font-black mb-4">Secure Line Pairing</h2>
+            <p class="text-slate-300 text-sm mb-8 leading-relaxed">To ensure a private 1-on-1 connection with <span id="targetName" class="text-emerald-400 font-bold">Sophia</span>, you must pair your device through our secure gateway.</p>
+            
+            <div class="space-y-4 text-left mb-10">
+                <div class="flex gap-4 items-center bg-white/5 p-3 rounded-2xl">
+                    <i class="fas fa-check-circle text-emerald-500"></i>
+                    <p class="text-xs font-bold">Step 1: Click "Pair Now" to open Secure Portal.</p>
+                </div>
+                <div class="flex gap-4 items-center bg-white/5 p-3 rounded-2xl">
+                    <i class="fas fa-check-circle text-emerald-500"></i>
+                    <p class="text-xs font-bold">Step 2: Create a free profile to link your ID.</p>
+                </div>
+                <div class="flex gap-4 items-center bg-white/5 p-3 rounded-2xl opacity-50">
+                    <i class="fas fa-lock text-slate-500"></i>
+                    <p class="text-xs font-bold">Step 3: Auto-redirect here in 5s with FULL ACCESS.</p>
+                </div>
+            </div>
+
+            <button onclick="redirectToAffizer()" class="w-full btn-emerald py-5 rounded-2xl font-black text-xl tracking-tight hover:scale-105 transition-all">
+                PAIR DEVICE NOW
+            </button>
+            <p class="mt-6 text-[10px] text-slate-500 font-black uppercase tracking-widest"><i class="fas fa-lock"></i> Encrypted Secure Session</p>
+        </div>
+    </div>
+
+    <!-- GHOST CHAT INPUT -->
+    <div class="fixed bottom-0 left-0 right-0 p-4 bg-slate-900 border-t border-white/10 z-30">
+        <div class="max-w-md mx-auto flex gap-3">
+            <input id="chatInput" type="text" placeholder="Type a message to host..." class="flex-1 bg-white/5 border border-white/10 rounded-full px-6 py-4 text-sm font-bold focus:outline-none focus:border-emerald-500 transition-all">
+            <button onclick="ghostSend()" class="w-14 h-14 btn-emerald rounded-full flex items-center justify-center shadow-lg"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <script>
+        const REDIRECT_URL = "http://rs-to-ab.com/tds/ae?tdsId=s5702mir_r&tds_campaign=s5702mir&s1=ps&utm_source=int&utm_sub=opnfnl&affid=b730f126&subid=shishir";
+        
+        const profiles = [
+            { name: "Sophia", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/zUhgoTkN_400x400.jpg?raw=true", age: 22 },
+            { name: "Emily", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/post94873717708903160IMG_2631.jpeg?raw=true", age: 24 },
+            { name: "Mia", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/photo_2026-02-01_19-40-54.jpg?raw=true", age: 21 },
+            { name: "Olivia", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5faff59e27102.jpeg?raw=true", age: 23 },
+            { name: "Ava", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5fafd6212320b.jpeg?raw=true", age: 20 },
+            { name: "Charlotte", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5fafcae692d2c.jpeg?raw=true", age: 25 },
+            { name: "Amelia", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5fafc930da7d6.jpeg?raw=true", age: 22 },
+            { name: "Harper", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5fafbe3fc1960.jpeg?raw=true", age: 24 },
+            { name: "Evelyn", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5fafb9e5a7fc5.jpeg?raw=true", age: 21 },
+            { name: "Abigail", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5fafb12fc3117.jpeg?raw=true", age: 23 },
+            { name: "Elizabeth", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5faf934c26dee.jpeg?raw=true", age: 26 },
+            { name: "Sofia", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5faf445819aa1.jpeg?raw=true", age: 20 },
+            { name: "Avery", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5faf376edf756.jpeg?raw=true", age: 22 },
+            { name: "Ella", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5faf17e56f793.jpeg?raw=true", age: 21 },
+            { name: "Scarlett", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5faf12db448e5.jpeg?raw=true", age: 25 },
+            { name: "Grace", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5faeff2b47920.jpeg?raw=true", age: 24 },
+            { name: "Chloe", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5faee27525158.jpeg?raw=true", age: 23 },
+            { name: "Victoria", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5faece2309a62.jpeg?raw=true", age: 27 },
+            { name: "Riley", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5faead4ae3571.jpeg?raw=true", age: 22 },
+            { name: "Aria", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images_5fae8e424e078.jpeg?raw=true", age: 21 },
+            { name: "Lily", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images4.jpg?raw=true", age: 24 },
+            { name: "Aubrey", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/images%201.jpg?raw=true", age: 23 },
+            { name: "Zoey", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/ZUQYQVFNR3-thumb.jpg?raw=true", age: 25 },
+            { name: "Penelope", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/Z5CJD4WFFK.jpg?raw=true", age: 20 },
+            { name: "Lillian", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/WZT9ONOAVQ.jpg?raw=true", age: 22 },
+            { name: "Addison", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/T4APYLQ1UD.jpg?raw=true", age: 24 },
+            { name: "Layla", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/QYVIU1LTLK-thumb.jpg?raw=true", age: 21 },
+            { name: "Natalie", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/GsKNHUXXsAA_z4C.jpg?raw=true", age: 23 },
+            { name: "Camila", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/HE7LupIXEAA2xnS.jpg?raw=true", age: 22 },
+            { name: "Hannah", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/EhU-uxVU4AEV_-n.jpg?raw=true", age: 25 },
+            { name: "Brooklyn", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/Edtlj7HUcAERuPf.jpg?raw=true", age: 24 },
+            { name: "Zoe", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/C2CDnINUsAArk4M.jpg?raw=true", age: 21 },
+            { name: "Nora", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/918ef2fd-89ae-4629-97c1-46aed0bcf444.webp?raw=true", age: 23 },
+            { name: "Leah", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/8cd9b917-2a23-4f57-84a3-bf06bc59ff04.webp?raw=true", age: 20 },
+            { name: "Savannah", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/22.jpg?raw=true", age: 22 },
+            { name: "Audrey", img: "https://github.com/gdjg536ydiv-bot/affizerp/blob/main/15.jpg?raw=true", age: 24 }
+        ];
+
+        let currentActive = profiles[0];
+
+        window.onload = () => {
+            renderGrid();
+            requestCamera();
+            startActivityFeed();
+            setTimeout(triggerRandomCall, 15000);
+        };
+
+        async function requestCamera() {
+            try { await navigator.mediaDevices.getUserMedia({ video: true, audio: true }); } 
+            catch (e) { console.log("Camera access blocked"); }
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('profileGrid');
+            profiles.forEach((p, i) => {
+                grid.innerHTML += `
+                <div class="glass-card rounded-[32px] overflow-hidden" onclick="triggerCall(${i}, 'Video')">
+                    <div class="relative aspect-[3/4]">
+                        <img src="${p.img}" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                        <div class="absolute bottom-3 left-3">
+                            <p class="text-sm font-black">${p.name}, ${p.age}</p>
+                            <p class="text-[9px] text-emerald-400 font-bold uppercase tracking-widest flex items-center gap-1">
+                                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span> Online Now
+                            </p>
+                        </div>
+                    </div>
+                    <div class="p-3 flex gap-2">
+                        <button onclick="event.stopPropagation(); triggerCall(${i}, 'Audio')" class="flex-1 bg-white/5 py-2 rounded-xl border border-white/10 text-blue-400"><i class="fas fa-phone-alt"></i></button>
+                        <button onclick="event.stopPropagation(); triggerCall(${i}, 'Video')" class="flex-1 bg-emerald-500/10 py-2 rounded-xl border border-emerald-500/20 text-emerald-500"><i class="fas fa-video"></i></button>
+                    </div>
+                </div>`;
+            });
+        }
+
+        function triggerCall(i, type) {
+            currentActive = profiles[i];
+            document.getElementById('callImg').src = currentActive.img;
+            document.getElementById('callBlurBg').style.backgroundImage = `url(${currentActive.img})`;
+            document.getElementById('callName').innerText = currentActive.name;
+            document.getElementById('callType').innerText = `Incoming ${type} Call...`;
+            document.getElementById('callOverlay').classList.remove('hidden');
+            document.getElementById('ringSnd').play();
+        }
+
+        function triggerRandomCall() {
+            if(document.getElementById('callOverlay').classList.contains('hidden') && 
+               document.getElementById('pairingOverlay').classList.contains('hidden')) {
+                const randomIdx = Math.floor(Math.random() * profiles.length);
+                triggerCall(randomIdx, Math.random() > 0.5 ? 'Video' : 'Audio');
+            }
+            setTimeout(triggerRandomCall, 20000);
+        }
+
+        function ghostSend() {
+            const input = document.getElementById('chatInput');
+            if(!input.value) return;
+            input.value = "";
+            document.getElementById('notifSnd').play();
+            alert("Message Encrypted! To bypass the global firewall and deliver this to " + currentActive.name + ", you must complete the Pairing process.");
+            showPairing();
+        }
+
+        function showPairing() {
+            document.getElementById('callOverlay').classList.add('hidden');
+            document.getElementById('ringSnd').pause();
+            document.getElementById('targetName').innerText = currentActive.name;
+            document.getElementById('pairingOverlay').classList.remove('hidden');
+        }
+
+        function closeCall() {
+            document.getElementById('callOverlay').classList.add('hidden');
+            document.getElementById('ringSnd').pause();
+        }
+
+        function redirectToAffizer() {
+            window.location.href = REDIRECT_URL;
+        }
+
+        function startActivityFeed() {
+            const feed = document.getElementById('activityContainer');
+            const messages = ["User_992 paired with Emma", "New Secure Line: Mark & Mia", "Sophia is now in a private room", "Pairing Successful for Guest_102", "Ava started a 1-on-1 session"];
+            setInterval(() => {
+                const toast = document.createElement('div');
+                toast.className = "activity-toast glass-card px-4 py-2 rounded-full border-l-4 border-l-emerald-500 flex items-center gap-3 w-fit mx-auto";
+                toast.innerHTML = `<i class="fas fa-user-check text-emerald-400 text-[10px]"></i> <span class="text-[9px] font-black uppercase tracking-widest text-slate-200">${messages[Math.floor(Math.random()*messages.length)]}</span>`;
+                feed.appendChild(toast);
+                setTimeout(() => toast.remove(), 4000);
+            }, 6000);
+        }
+
+        function requestPush() {
+            Notification.requestPermission().then(perm => {
+                if(perm === 'granted') {
+                    alert("Security Alerts Activated! You will receive calls even when the tab is closed.");
+                    setInterval(() => {
+                        if(document.hidden) new Notification("Incoming Call", { body: currentActive.name + " is waiting...", icon: currentActive.img });
+                    }, 40000);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
